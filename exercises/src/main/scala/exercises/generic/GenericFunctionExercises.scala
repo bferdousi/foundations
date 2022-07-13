@@ -18,19 +18,35 @@ object GenericFunctionExercises {
     // 1a. Implement `swap` which exchanges `first` and `second`
     // such as Pair("John", "Doe").swap == Pair("Doe", "John")
     def swap: Pair[A] =
-      ???
+      Pair(second, first)
 
     // 1b. Implement `map` which applies a function to `first` and `second`
     // such as Pair("John", "Doe").map(_.length) == Pair(4,3)
     def map[To](update: A => To): Pair[To] =
-      ???
+      Pair(update(first), update(second))
 
     // 1c. Implement `zipWith` which merges two Pairs using a `combine` function
     // such as Pair(0, 2).zipWith(Pair(3, 4))((x, y) => x + y) == Pair(3, 6)
     //         Pair(2, 3).zipWith(Pair("Hello ", "World "))(replicate) == Pair("Hello Hello ", "World World World ")
     // Bonus: Why did we separate the arguments of `zipWith` into two set of parentheses?
     def zipWith[Other, To](other: Pair[Other])(combine: (A, Other) => To): Pair[To] =
-      ???
+      Pair(combine(first, other.first), combine(second, other.second))
+
+    def zipWithMore[Other1, Other2, To](other1: Pair[Other1], other2: Pair[Other2])(
+      combine: (A, Other1, Other2) => To
+    ): Pair[To] =
+      Pair(combine(first, other1.first, other2.first), combine(second, other1.second, other2.second))
+
+    def zipWithX[Other1, Other2, Other3, To](other1: Pair[Other1], other2: Pair[Other2])(
+      combine: (A, Other1) => Other3
+    )(combine2: (Other3, Other2) => To) =
+      zipWith(other1)(combine).zipWith(other2)(combine2)
+
+    def zipWithSolution[Other1, Other2, To](other1: Pair[Other1], other2: Pair[Other2])(
+      combine: (A, Other1, Other2) => To
+    ): Pair[To] =
+      zipWith(other1)((_, _)).zipWith(other2) { case ((a, b), c) => combine(a, b, c) }
+
   }
 
   // 1d. Use the Pair API to decode the content of `secret`.
@@ -42,7 +58,10 @@ object GenericFunctionExercises {
       first = List(103, 110, 105, 109, 109, 97, 114, 103, 111, 114, 80),
       second = List(108, 97, 110, 111, 105, 116, 99, 110, 117, 70)
     )
-  lazy val decoded: Pair[String] = ???
+  val decoded: Pair[String] = secret
+    .map(bytes => bytes.map(_.toChar).reverse)
+    .swap
+    .map(_.mkString)
 
   // 1e. Use the Pair API to combine `productNames` and `productPrices` into `products`
   // such as products == Pair(Product("Coffee", 2.5), Product("Plane ticket", 329.99))
@@ -51,8 +70,8 @@ object GenericFunctionExercises {
   val productNames: Pair[String]  = Pair("Coffee", "Plane ticket")
   val productPrices: Pair[Double] = Pair(2.5, 329.99)
 
-  lazy val products: Pair[Product] =
-    ???
+  val products: Pair[Product] =
+    productNames.zipWith(productPrices)((name, price) => Product(name, price))
 
   //////////////////////////////////////////////
   // Bonus question (not covered by the video)
@@ -86,7 +105,7 @@ object GenericFunctionExercises {
     //         (isEven && isPositive)(-4) == false
     //         (isEven && isPositive)(-7) == false
     def &&(other: Predicate[A]): Predicate[A] =
-      ???
+      Predicate(v => this.eval(v) && other.eval(v))
 
     // 2b. Implement `||` that combines two predicates using logical or
     // such as (isEven || isPositive)(12) == true
@@ -94,12 +113,15 @@ object GenericFunctionExercises {
     //         (isEven || isPositive)(-4) == true
     // but     (isEven || isPositive)(-7) == false
     def ||(other: Predicate[A]): Predicate[A] =
-      ???
+      Predicate(v => this.eval(v) || other.eval(v))
 
     // 2c. Implement `flip` that reverses a predicate
     // such as isEven.flip(11) == true
     def flip: Predicate[A] =
-      ???
+      Predicate(v => !this.eval(v))
+
+    def contramap[To](zoom: To => A): Predicate[To] = Predicate(v => eval(zoom(v)))
+
   }
 
   // 2d. Implement `isValidUser`, a predicate which checks if a `User` is:
@@ -114,8 +136,18 @@ object GenericFunctionExercises {
   // You may want to create new Predicate methods to improve the implementation of `isValidUser`.
   case class User(name: String, age: Int)
 
-  lazy val isValidUser: Predicate[User] =
-    ???
+  val isAgeGreaterThan18: Predicate[User]     = isGreaterThan(18).contramap(_.age)
+  val isNameMoreThan3Chars: Predicate[String] = isGreaterThan(3).contramap(_.length)
+  val isNameCapitalized: Predicate[String]    = Predicate(name => name(0).isUpper)
+
+  def isGreaterThan(min: Int): Predicate[Int] = Predicate(_ > min)
+
+  def byUser[To](zoom: User => To)(predicate: Predicate[To]): Predicate[User] = Predicate(user => predicate(zoom(user)))
+
+  lazy val isValidUser: Predicate[User] = {
+    byUser(_.age)(isGreaterThan(18)) &&
+    byUser(_.name)(isNameMoreThan3Chars && isNameCapitalized)
+  }
 
   ////////////////////////////
   // Exercise 3: JsonDecoder
