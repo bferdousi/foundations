@@ -80,9 +80,33 @@ class GenericFunctionExercisesTest extends AnyFunSuite with ScalaCheckDrivenProp
   // Exercise 3: JsonDecoder
   ////////////////////////////
 
-  test("JsonDecoder UserId") {}
+  test("JsonDecoder UserId") {
+    assert(userIdDecoder.decode("1234") == UserId(1234))
+    assertThrows[java.lang.NumberFormatException](userIdDecoder.decode("Hello"))
+  }
 
-  test("JsonDecoder LocalDate") {}
+  test("JsonDecoder UserId Property based testing") {
+    forAll { (number: Int) =>
+      assert(userIdDecoder.decode(number.toString) == UserId(number))
+    }
+  }
+
+  test("JsonDecoder LocalDate") {
+    assert(localDateDecoder.decode("\"2020-03-26\"") == LocalDate.of(2020, 3, 26))
+    assert(Try(localDateDecoder.decode("hello")).isFailure)
+    assert(Try(localDateDecoder.decode("2020-03-26")).isFailure)
+  }
+
+  test("JsonDecoder LocalDate property testing") {
+    forAll { (localDate: LocalDate) =>
+      val json = "\"" + DateTimeFormatter.ISO_LOCAL_DATE.format(localDate) + "\""
+      assert(localDateDecoder.decode(json) == localDate)
+    }
+  }
+  val genLocalDate: Gen[LocalDate] =
+    Gen.choose(LocalDate.MIN.toEpochDay, LocalDate.MAX.toEpochDay).map(LocalDate.ofEpochDay)
+
+  implicit val arbitraryLocalDate: Arbitrary[LocalDate] = Arbitrary(genLocalDate)
 
   test("JsonDecoder weirdLocalDateDecoder") {}
 
