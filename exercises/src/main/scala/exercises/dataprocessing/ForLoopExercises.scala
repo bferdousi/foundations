@@ -27,14 +27,16 @@ object ForLoopExercises {
   // Note: Option is an enumeration with two values:
   // * Some when there is a value and
   // * None when there is no value (a bit like null)
-  def min(numbers: List[Int]): Option[Int] =
-    if (numbers.isEmpty) None
-    else {
-      var minimumItem = Int.MaxValue
-      for (number <- numbers)
-        if (number < minimumItem) minimumItem = number
-      Some(minimumItem)
-    }
+  def min(numbers: List[Int]): Option[Int] = {
+    var minNumber = Option.empty[Int]
+    for (number <- numbers)
+      minNumber match {
+        case Some(minNumberSoFar) => minNumber = Some(number min minNumberSoFar)
+        case None                 => minNumber = Some(number)
+      }
+
+    minNumber
+  }
 
   // c. Implement `wordCount` using a mutable state and a for loop.
   // `wordCount` compute how many times each word appears in a `List`

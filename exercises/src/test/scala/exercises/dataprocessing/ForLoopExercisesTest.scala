@@ -46,6 +46,16 @@ class ForLoopExercisesTest extends AnyFunSuite with ScalaCheckDrivenPropertyChec
     }
   }
 
+  test("min property based simpler") {
+    forAll { (list1: List[Int]) =>
+      val minNumber = min(list1)
+      minNumber match {
+        case Some(minNumberValue) => for (number <- list1) assert(minNumberValue <= number)
+        case None                 => assert(list1.isEmpty)
+      }
+    }
+  }
+
   ignore("wordCount") {
     assert(wordCount(List("Hi", "Hello", "Hi")) == Map("Hi" -> 2, "Hello" -> 1))
     assert(wordCount(Nil) == Map.empty)
