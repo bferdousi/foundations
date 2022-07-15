@@ -14,8 +14,12 @@ object ForLoopExercises {
   // a. Implement `size` using a mutable state and a for loop
   // such as size(List(2,5,1,8)) == 4
   // and     size(Nil) == 0
-  def size[A](items: List[A]): Int =
-    ???
+  def size[A](items: List[A]): Int = {
+    var total = 0
+    for (_ <- items)
+      total += 1
+    total
+  }
 
   // b. Implement `min` using a mutable state and a for loop
   // such as min(List(2,5,1,8)) == Some(1)
@@ -24,7 +28,13 @@ object ForLoopExercises {
   // * Some when there is a value and
   // * None when there is no value (a bit like null)
   def min(numbers: List[Int]): Option[Int] =
-    ???
+    if (numbers.isEmpty) None
+    else {
+      var minimumItem = Int.MaxValue
+      for (number <- numbers)
+        if (number < minimumItem) minimumItem = number
+      Some(minimumItem)
+    }
 
   // c. Implement `wordCount` using a mutable state and a for loop.
   // `wordCount` compute how many times each word appears in a `List`
