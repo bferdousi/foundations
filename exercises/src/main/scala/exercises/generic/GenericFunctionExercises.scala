@@ -246,10 +246,38 @@ object GenericFunctionExercises {
   // * "\"null\"" into a Some("null")
   // * "null" into "None"
   // Note: you may need to change the function signature
-  def optionDecoder[A]: JsonDecoder[Option[A]] =
-    ???
+  def optionDecoder[A](decoder: JsonDecoder[A]): JsonDecoder[Option[A]] = {
+    case "null" => None
+    case json   => Some(decoder.decode(json))
+  }
 
   // 3g. `JsonDecoder` currently throws an exception if the input is not a valid JSON.
   // How could you change the API so that it doesn't happen anymore?
+  trait SafeJsonDecoder[A] { outer =>
+    def decode(json: Json): Either[String, A]
 
+    def map[To](update: A => To): SafeJsonDecoder[To] =
+      new SafeJsonDecoder[To] {
+        override def decode(json: Json): Either[String, To] = outer.decode(json).map(update)
+      }
+
+    def orElse(decoder: SafeJsonDecoder[A]): SafeJsonDecoder[A] = json => {
+      val attempt = Try(outer.decode(json))
+      attempt match {
+        case Success(v) => v
+        case Failure(_) => decoder.decode(json)
+      }
+    }
+
+  }
+
+  val safeIntDecoder: SafeJsonDecoder[Int] = (json: Json) => Try(json.toInt).toOption.toRight("Error in json to int")
+
+  val safeStringDecoder: SafeJsonDecoder[String] = new SafeJsonDecoder[String] {
+    def decode(json: Json): Either[String, String] =
+      json.startsWith("\"") && json.endsWith("\"") match {
+        case true  => Right(json.substring(1, json.length - 1))
+        case false => Left("Error in json ")
+      }
+  }
 }
