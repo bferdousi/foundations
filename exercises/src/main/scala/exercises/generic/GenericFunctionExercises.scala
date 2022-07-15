@@ -164,6 +164,14 @@ object GenericFunctionExercises {
         override def decode(json: Json): To = update(outer.decode(json))
       }
 
+    def orElse(decoder: JsonDecoder[A]): JsonDecoder[A] = json => {
+      val attempt = Try(outer.decode(json))
+      attempt match {
+        case Success(v) => v
+        case Failure(_) => decoder.decode(json)
+      }
+    }
+
   }
 
   val intDecoder: JsonDecoder[Int] = new JsonDecoder[Int] {
@@ -222,8 +230,10 @@ object GenericFunctionExercises {
   // but weirdLocalDateDecoder.decode("hello") would throw an Exception
   // Try to think how we could extend JsonDecoder so that we can easily implement
   // other decoders that follow the same pattern.
+  val longDecoder: JsonDecoder[Long]               = json => json.toLong
+  val longLocalDateDecoder: JsonDecoder[LocalDate] = longDecoder.map(LocalDate.ofEpochDay)
   lazy val weirdLocalDateDecoder: JsonDecoder[LocalDate] =
-    ???
+    localDateDecoder.orElse(longLocalDateDecoder)
 
   //////////////////////////////////////////////
   // Bonus question (not covered by the video)

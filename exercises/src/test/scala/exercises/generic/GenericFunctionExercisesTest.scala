@@ -108,6 +108,19 @@ class GenericFunctionExercisesTest extends AnyFunSuite with ScalaCheckDrivenProp
 
   implicit val arbitraryLocalDate: Arbitrary[LocalDate] = Arbitrary(genLocalDate)
 
-  test("JsonDecoder weirdLocalDateDecoder") {}
+  test("JsonDecoder weirdLocalDateDecoder") {
+    weirdLocalDateDecoder.decode("\"2020-03-26\"") == LocalDate.of(2020, 3, 26)
+    weirdLocalDateDecoder.decode("18347") == LocalDate.of(2020, 3, 26)
+  }
+
+  test("JsonDecoder weirdLocalDateDecoder property test") {
+    forAll(genLocalDate) { (localDate: LocalDate) =>
+      val json1 = "\"" + localDate.toString + "\""
+      val json2 = localDate.toEpochDay.toString
+      assert(weirdLocalDateDecoder.decode(json1) == localDate)
+      assert(weirdLocalDateDecoder.decode(json2) == localDate)
+    }
+
+  }
 
 }
