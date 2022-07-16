@@ -44,8 +44,14 @@ object ForLoopExercises {
   // and     wordCount(Nil) == Map.empty
   // Note: You can lookup an element in a `Map` with the method `get`
   // and you can upsert a value using `updated`
-  def wordCount(words: List[String]): Map[String, Int] =
-    ???
+  def wordCount(words: List[String]): Map[String, Int] = {
+    var output = Map.empty[String, Int]
+    words.foreach { word =>
+      //output = output.updated(word, output.getOrElse(word, 0) + 1)
+      output = output.updatedWith(word)(_.fold(Some(1))((v: Int) => Some(v + 1)))
+    }
+    output
+  }
 
   // d. `sum`, `size`, `min` and `wordCount` are quite similar.
   // Could you write a higher-order function that captures this pattern?

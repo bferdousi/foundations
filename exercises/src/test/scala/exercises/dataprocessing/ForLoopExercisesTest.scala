@@ -56,9 +56,18 @@ class ForLoopExercisesTest extends AnyFunSuite with ScalaCheckDrivenPropertyChec
     }
   }
 
-  ignore("wordCount") {
+  test("wordCount") {
     assert(wordCount(List("Hi", "Hello", "Hi")) == Map("Hi" -> 2, "Hello" -> 1))
     assert(wordCount(Nil) == Map.empty)
   }
 
+  test("wordCount property based on counts all the word occurance and contains the word") {
+    forAll { (l: List[String]) =>
+      val output = wordCount(l)
+      for {
+        word <- output.keys
+      } assert(l.count(_ == word) == output.getOrElse(word, 0) && l.contains(word))
+    }
+
+  }
 }
