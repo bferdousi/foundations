@@ -14,12 +14,8 @@ object ForLoopExercises {
   // a. Implement `size` using a mutable state and a for loop
   // such as size(List(2,5,1,8)) == 4
   // and     size(Nil) == 0
-  def size[A](items: List[A]): Int = {
-    var total = 0
-    for (_ <- items)
-      total += 1
-    total
-  }
+  def size[A](items: List[A]): Int =
+    pattern(0)(items)((total, _) => total + 1)
 
   // b. Implement `min` using a mutable state and a for loop
   // such as min(List(2,5,1,8)) == Some(1)
@@ -27,16 +23,13 @@ object ForLoopExercises {
   // Note: Option is an enumeration with two values:
   // * Some when there is a value and
   // * None when there is no value (a bit like null)
-  def min(numbers: List[Int]): Option[Int] = {
-    var minNumber = Option.empty[Int]
-    for (number <- numbers)
+  def min(numbers: List[Int]): Option[Int] =
+    pattern(Option.empty[Int])(numbers)((minNumber, number) =>
       minNumber match {
-        case Some(minNumberSoFar) => minNumber = Some(number min minNumberSoFar)
-        case None                 => minNumber = Some(number)
+        case Some(minNumberSoFar) => Some(number min minNumberSoFar)
+        case None                 => Some(number)
       }
-
-    minNumber
-  }
+    )
 
   // c. Implement `wordCount` using a mutable state and a for loop.
   // `wordCount` compute how many times each word appears in a `List`
@@ -44,19 +37,17 @@ object ForLoopExercises {
   // and     wordCount(Nil) == Map.empty
   // Note: You can lookup an element in a `Map` with the method `get`
   // and you can upsert a value using `updated`
-  def wordCount(words: List[String]): Map[String, Int] = {
-    var output = Map.empty[String, Int]
-    words.foreach { word =>
-      //output = output.updated(word, output.getOrElse(word, 0) + 1)
-      output = output.updatedWith(word)(_.fold(Some(1))((v: Int) => Some(v + 1)))
-    }
-    output
-  }
+  def wordCount(words: List[String]): Map[String, Int] =
+    pattern(Map.empty[String, Int])(words)((prev, item) => prev.updated(item, prev.getOrElse(item, 0) + 1))
 
   // d. `sum`, `size`, `min` and `wordCount` are quite similar.
   // Could you write a higher-order function that captures this pattern?
   // How would you call it?
-  def pattern = ???
+  def pattern[A, B](initialValue: A)(list: List[B])(update: (A, B) => A): A = {
+    var v = initialValue
+    list.foreach(item => v = update(v, item))
+    v
+  }
 
   // e. Refactor `sum`, `size`, `min` and `wordCount` using the higher-order
   // function you defined above.
