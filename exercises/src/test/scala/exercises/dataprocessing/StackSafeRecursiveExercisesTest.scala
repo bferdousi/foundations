@@ -30,10 +30,39 @@ class StackSafeRecursiveExercisesTest extends AnyFunSuite with ScalaCheckDrivenP
     }
   }
 
-  test("min") {}
+  test("min") {
+    assert(min(List(2, 5, 1, 8)) == Some(1))
+    assert(min(Nil) == None)
+    assert(min(List.fill(largeSize)(0)) == Some(0))
+  }
 
-  test("reverse") {}
+  test("min is consistent with min library") {
+    forAll { (list: List[Int]) =>
+      assert(min(list) == list.minOption)
+    }
+  }
 
-  test("foldLeft") {}
+  test("reverse") {
+    assert(reverse(List(2, 5, 1, 8)) == List(8, 1, 5, 2))
+    assert(reverse(Nil) == Nil)
+    val largeSizeList = List.fill(largeSize)(0)
+    assert(largeSizeList == reverse(largeSizeList))
+  }
+
+  test("reverse is same as std reverse") {
+    forAll { (list: List[Int]) =>
+      assert(reverse(list) == list.reverse)
+    }
+  }
+
+  test("foldLeft") {
+    assert(foldLeft(List.fill(largeSize)(1), 0)(_ + _) == largeSize)
+  }
+
+  test("foldLeft is same as std") {
+    forAll { (list: List[Int], default: Int, func: (Int, Int) => Int) =>
+      assert(foldLeft(list, default)(func) == list.foldLeft(default)(func))
+    }
+  }
 
 }
