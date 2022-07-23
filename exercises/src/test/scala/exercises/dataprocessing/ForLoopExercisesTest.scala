@@ -70,4 +70,21 @@ class ForLoopExercisesTest extends AnyFunSuite with ScalaCheckDrivenPropertyChec
     }
 
   }
+
+  test("map works with foldLeft") {
+    forAll { (l: List[Int], func: Int => String) =>
+      assert(map(l)(func) == l.map(func))
+    }
+  }
+
+  test("reverse works with foldLeft") {
+    forAll { (l: List[Int]) =>
+      assert(reverse(l) == l.reverse)
+    }
+  }
+
+  test("last option") {
+    assert(lastOption(List(1, 2, 3)) == Some(3))
+    assert(lastOption(Nil) == None)
+  }
 }
