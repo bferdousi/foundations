@@ -1,13 +1,21 @@
 package exercises.dataprocessing
 
+import scala.math
+
 object TemperatureExercises {
   // b. Implement `minSampleByTemperature` which finds the `Sample` with the coldest temperature.
   // `minSampleByTemperature` should work as follow:
   // Step 1: Find the local minimums (for each partition the `Sample` with the coldest temperature).
   // Step 2: Find the minimum value among the local minimums.
   // Note: We'll write test in the file `ParListTest.scala`
-  def minSampleByTemperature(samples: ParList[Sample]): Option[Sample] =
-    ???
+  def minSampleByTemperature(samples: ParList[Sample]): Option[Sample] = {
+
+    implicit val sampleOrdering: Ordering[Sample] = (x: Sample, y: Sample) =>
+      (x.temperatureFahrenheit - y.temperatureFahrenheit).toInt
+
+    val minSamples = samples.partitions.map(_.min)
+    minSamples.minOption
+  }
 
   // c. Implement `averageTemperature` which finds the average temperature across all `Samples`.
   // `averageTemperature` should work as follow:
@@ -63,21 +71,18 @@ object TemperatureExercises {
         sum = 0.0,
         size = 0
       )
-    )(
-      (state, sample) =>
-        Summary(
-          min = state.min.fold(Some(sample))(
-            current =>
-              if (current.temperatureFahrenheit <= sample.temperatureFahrenheit) Some(current)
-              else Some(sample)
-          ),
-          max = state.max.fold(Some(sample))(
-            current =>
-              if (current.temperatureFahrenheit >= sample.temperatureFahrenheit) Some(current)
-              else Some(sample)
-          ),
-          sum = state.sum + sample.temperatureFahrenheit,
-          size = state.size + 1
+    )((state, sample) =>
+      Summary(
+        min = state.min.fold(Some(sample))(current =>
+          if (current.temperatureFahrenheit <= sample.temperatureFahrenheit) Some(current)
+          else Some(sample)
+        ),
+        max = state.max.fold(Some(sample))(current =>
+          if (current.temperatureFahrenheit >= sample.temperatureFahrenheit) Some(current)
+          else Some(sample)
+        ),
+        sum = state.sum + sample.temperatureFahrenheit,
+        size = state.size + 1
       )
     )
 

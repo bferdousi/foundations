@@ -23,7 +23,7 @@ object TemperatureNotebook extends App {
 
   val rows: List[Either[ReadError, Sample]] = reader.toList
 
-  val failures: List[ReadError] = rows.collect { case Left(error)   => error }
+  val failures: List[ReadError] = rows.collect { case Left(error) => error }
   val samples: List[Sample]     = rows.collect { case Right(sample) => sample }
 
   // we can also extract failures and successes in one go using `partitionMap`
@@ -35,12 +35,17 @@ object TemperatureNotebook extends App {
   // Partition `parSamples` so that it contains 10 partitions of roughly equal size.
   // Note: Check `ParList` companion object
   lazy val parSamples: ParList[Sample] =
-    ???
+    ParList.byPartitionSize(math.ceil(samples.size / 10.0).toInt, samples)
+
+  parSamples.partitions.zipWithIndex.foreach { case (partition, index) =>
+    println(s"Partion ${index} with size ${partition.size}")
+  }
 
   // b. Implement `minSampleByTemperature` in TemperatureExercises
   lazy val coldestSample: Option[Sample] =
     TemperatureExercises.minSampleByTemperature(parSamples)
 
+  println(s"The coldest sample is ${coldestSample}")
   // c. Implement `averageTemperature` in TemperatureExercises
   lazy val averageTemperature: Option[Double] =
     TemperatureExercises.averageTemperature(parSamples)
@@ -56,7 +61,7 @@ object TemperatureNotebook extends App {
   // * TODO ParList parFoldMap
   bench("sum", iterations = 200, warmUpIterations = 40, ignore = true)(
     Labelled("List foldLeft", () => samples.foldLeft(0.0)((state, sample) => state + sample.temperatureFahrenheit)),
-    Labelled("List map + sum", () => samples.map(_.temperatureFahrenheit).sum),
+    Labelled("List map + sum", () => samples.map(_.temperatureFahrenheit).sum)
 //    Labelled("ParList foldMap", () => ???),
 //    Labelled("ParList parFoldMap", () => ???),
   )
@@ -70,7 +75,7 @@ object TemperatureNotebook extends App {
     Labelled("List 4 iterations", () => TemperatureExercises.summaryList(samples)),
     Labelled("List 1 iteration", () => TemperatureExercises.summaryListOnePass(samples)),
     Labelled("ParList 4 iterations", () => TemperatureExercises.summaryParList(parSamples)),
-    Labelled("ParList 1 iteration", () => TemperatureExercises.summaryParListOnePass(parSamples)),
+    Labelled("ParList 1 iteration", () => TemperatureExercises.summaryParListOnePass(parSamples))
   )
 
   //////////////////////////////////////////////

@@ -6,7 +6,19 @@ import TemperatureExercises._
 
 class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with ParListTestInstances {
 
-  ignore("minSampleByTemperature example") {
+  ignore("Partionsize test") {
+    forAll { (listSize: Int, numberOfPartions: Int) =>
+      val list = List.fill(listSize)(0)
+      assert(
+        ParList
+          .byPartitionSize(math.ceil(listSize.toDouble / numberOfPartions).toInt, list)
+          .partitions
+          .length == numberOfPartions
+      )
+    }
+  }
+
+  test("minSampleByTemperature example") {
     val samples = List(
       Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 50),
       Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 56.3),
@@ -14,7 +26,7 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
       Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 89.7),
       Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 22.1),
       Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 34.7),
-      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 99.0),
+      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 99.0)
     )
     val parSamples = ParList.byPartitionSize(3, samples)
 
@@ -24,7 +36,7 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
     )
   }
 
-  ignore("minSampleByTemperature returns the coldest Sample") {
+  test("minSampleByTemperature returns the coldest Sample") {
     forAll { (samples: List[Sample]) =>
       val parSamples = ParList.byPartitionSize(3, samples)
 
@@ -32,6 +44,13 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
         coldest <- minSampleByTemperature(parSamples)
         sample  <- samples
       } assert(coldest.temperatureFahrenheit <= sample.temperatureFahrenheit)
+    }
+  }
+
+  test("minSampleByTemperature oracle") {
+    forAll { (samples: List[Sample]) =>
+      val parSamples = ParList.byPartitionSize(3, samples)
+      assert(samples.minByOption(_.temperatureFahrenheit) == minSampleByTemperature(parSamples))
     }
   }
 
@@ -43,7 +62,7 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
       Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 89.7),
       Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 22.1),
       Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 34.7),
-      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 99.0),
+      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 99.0)
     )
     val parSamples = ParList.byPartitionSize(3, samples)
 
@@ -57,7 +76,7 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
       List(
         summaryListOnePass(samplesList),
         summaryParList(samples),
-        summaryParListOnePass(samples),
+        summaryParListOnePass(samples)
       ).foreach { other =>
         assert(reference.size == other.size)
         assert((reference.sum - other.sum).abs < 0.00001)
