@@ -28,8 +28,35 @@ object TemperatureExercises {
   // Step 3: Divide the total temperature by the size of dataset.
   // In case the input `ParList` is empty we return `None`.
   // Bonus: Can you calculate the size and sum in one go?
+  def sumAndSizeTemperature(samples: ParList[Sample]): Option[(Double, Int)] = {
+    def getSumOAndSizefTemperatureFromSampleList(sampleList: List[Sample]): (Double, Int) =
+      sampleList.foldLeft((0.0, 0)) { case ((sum, size), sample) => (sum + sample.temperatureFahrenheit, size + 1) }
+    def sumTuples(tuples: List[(Double, Int)]): (Double, Int) = tuples.foldLeft((0.0, 0)) {
+      case ((sum, size), (sum1, size1)) =>
+        (sum + sum1, size + size1)
+    }
+
+    samples.partitions match {
+      case list =>
+        Some(
+          sumTuples(
+            list
+              .map(getSumOAndSizefTemperatureFromSampleList)
+          )
+        )
+      case Nil => None
+    }
+
+  }
+
+  def sizeSample(samples: ParList[Sample]): Int =
+    samples.partitions.foldLeft(0)(_ + _.size)
+
   def averageTemperature(samples: ParList[Sample]): Option[Double] =
-    ???
+    sumAndSizeTemperature(samples) match {
+      case Some((sum, size)) if size > 0 => Some(sum / size)
+      case _                             => None
+    }
 
   // d. Implement `foldLeft` and then move it inside the class `ParList`.
   // `foldLeft` should work as follow:

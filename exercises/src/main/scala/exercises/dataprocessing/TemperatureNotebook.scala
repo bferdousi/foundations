@@ -47,9 +47,9 @@ object TemperatureNotebook extends App {
 
   println(s"The coldest sample is ${coldestSample}")
   // c. Implement `averageTemperature` in TemperatureExercises
-  lazy val averageTemperature: Option[Double] =
+  val averageTemperature: Option[Double] =
     TemperatureExercises.averageTemperature(parSamples)
-
+  println(s"The average temperature is ${averageTemperature}")
   //////////////////////
   // Benchmark ParList
   //////////////////////

@@ -54,7 +54,7 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
     }
   }
 
-  ignore("averageTemperature example") {
+  test("averageTemperature example") {
     val samples = List(
       Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 50),
       Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 56.3),
@@ -67,6 +67,14 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
     val parSamples = ParList.byPartitionSize(3, samples)
 
     assert(averageTemperature(parSamples) == Some(53.6))
+  }
+
+  test("Property based test for average") {
+    forAll { (samples: ParList[Sample]) =>
+      val flattenned  = samples.partitions.flatten.map(_.temperatureFahrenheit)
+      val expectation = if (flattenned.isEmpty) None else Some(flattenned.sum / flattenned.size)
+      assert(averageTemperature(samples) == expectation)
+    }
   }
 
   ignore("summary is consistent between implementations") {
