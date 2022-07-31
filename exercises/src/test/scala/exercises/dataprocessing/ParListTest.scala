@@ -36,6 +36,23 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
     )
   }
 
+  test("minSampleByTemperature example with fold Left") {
+    val samples = List(
+      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 50),
+      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 56.3),
+      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 23.4),
+      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 89.7),
+      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 22.1),
+      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 34.7),
+      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 99.0)
+    )
+    val parSamples = ParList.byPartitionSize(3, samples)
+
+    assert(
+      minSampleWithFoldLeft(parSamples) ==
+        Some(Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 22.1))
+    )
+  }
   test("minSampleByTemperature returns the coldest Sample") {
     forAll { (samples: List[Sample]) =>
       val parSamples = ParList.byPartitionSize(3, samples)
@@ -74,6 +91,19 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
       val flattenned  = samples.partitions.flatten.map(_.temperatureFahrenheit)
       val expectation = if (flattenned.isEmpty) None else Some(flattenned.sum / flattenned.size)
       assert(averageTemperature(samples) == expectation)
+    }
+  }
+
+  test("size test with fold") {
+    forAll { (list: List[Sample]) =>
+      val parList = ParList.byPartitionSize(3, list)
+      assert(sizeSampleWithFoldLeft(parList) == list.size)
+    }
+  }
+
+  test("monofold test oracle") {
+    forAll { (parList: ParList[Int], default: Int) =>
+      assert(parList.monoFoldLeft(default)(_ + _) == parList.toList.foldLeft(default)(_ + _))
     }
   }
 

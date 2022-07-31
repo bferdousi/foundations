@@ -17,6 +17,51 @@ object TemperatureExercises {
     minSamples.minOption
   }
 
+  def minTemperatureWithFold(samples: ParList[Sample]): Option[Double] = {
+
+    def combine(currValue: Option[Double], sample: Sample): Option[Double] =
+      (currValue, sample) match {
+        case (None, sample: Sample)                                              => Some(sample.temperatureFahrenheit)
+        case (Some(minValue), sample) if sample.temperatureFahrenheit < minValue => Some(sample.temperatureFahrenheit)
+
+      }
+
+    def combineIntermediate(currValue: Option[Double], intermediateValue: Option[Double]) =
+      (currValue, intermediateValue) match {
+        case (None, maybeV2)                         => maybeV2
+        case (maybeV1, None)                         => maybeV1
+        case (Some(v1: Double), Some(v2)) if v1 < v2 => Some(v1)
+        case (Some(v1), Some(v2: Double)) if v2 < v1 => Some(v2)
+      }
+
+    val default = Option.empty[Double]
+    samples.partitions.map((p: List[Sample]) => p.foldLeft(default)(combine)).foldLeft(default)(combineIntermediate)
+
+  }
+
+  def minSampleWithFoldLeft(samples: ParList[Sample]): Option[Sample] = {
+    def combine(currValue: Option[Sample], sample: Sample): Option[Sample] =
+      (currValue, sample) match {
+        case (None, sample: Sample) => Some(sample)
+        case (Some(currMinSample), sample) if sample.temperatureFahrenheit < currMinSample.temperatureFahrenheit =>
+          Some(sample)
+        case (currValue, _) => currValue
+
+      }
+
+    def combineIntermediate(currValue: Option[Sample], intermediateValue: Option[Sample]): Option[Sample] =
+      (currValue, intermediateValue) match {
+        case (None, maybeV2)                                                                             => maybeV2
+        case (maybeV1, None)                                                                             => maybeV1
+        case (Some(v1: Sample), Some(v2: Sample)) if v1.temperatureFahrenheit < v2.temperatureFahrenheit => Some(v1)
+        case (Some(v1: Sample), Some(v2: Sample)) if v2.temperatureFahrenheit < v1.temperatureFahrenheit => Some(v2)
+
+      }
+
+    val default = Option.empty[Sample]
+    samples.foldLeft(default)(combine)(combineIntermediate)
+  }
+
   // c. Implement `averageTemperature` which finds the average temperature across all `Samples`.
   // `averageTemperature` should work as follow:
   // Step 1: Compute the sum of all samples temperatures
@@ -52,6 +97,8 @@ object TemperatureExercises {
   def sizeSample(samples: ParList[Sample]): Int =
     samples.partitions.foldLeft(0)(_ + _.size)
 
+  def sizeSampleWithFoldLeft(samples: ParList[Sample]): Int = samples.foldLeft(0)((acc, _) => acc + 1)(_ + _)
+
   def averageTemperature(samples: ParList[Sample]): Option[Double] =
     sumAndSizeTemperature(samples) match {
       case Some((sum, size)) if size > 0 => Some(sum / size)
@@ -66,8 +113,10 @@ object TemperatureExercises {
   // Partition 1: List(a1, b1, c1, d1, e1, f1) ->    res1 (intermediate result of partition 1) \
   // Partition 2: List(a2, b2, c2, d2, e2, f2) ->    res2 (intermediate result of partition 2) - finalResult
   // Partition 3:                          Nil -> default (partition 3 is empty)               /
-  def foldLeft[From, To](parList: ParList[From], default: To)(combine: (To, From) => To): To =
-    ???
+  def foldLeft[From, To](parList: ParList[From], default: To)(combine: (To, From) => To)(
+    combineIntermediate: (To, To) => To
+  ): To =
+    parList.partitions.map(partition => partition.foldLeft(default)(combine)).foldLeft(default)(combineIntermediate)
 
   // e. Implement `monoFoldLeft`, a version of `foldLeft` that does not change the element type.
   // Then move `monoFoldLeft` inside  the class `ParList`.
@@ -79,7 +128,7 @@ object TemperatureExercises {
   // Partition 2: List(a2, b2, c2, d2, e2, f2) ->       y   (folded partition 2) - z (final result)
   // Partition 3:                          Nil -> default (partition 3 is empty)  /
   def monoFoldLeft[A](parList: ParList[A], default: A)(combine: (A, A) => A): A =
-    ???
+    parList.partitions.map(_.foldLeft(default)(combine)).foldLeft(default)(combine)
 
   // `summaryList` iterate 4 times over `samples`, one for each field.
   def summaryList(samples: List[Sample]): Summary =

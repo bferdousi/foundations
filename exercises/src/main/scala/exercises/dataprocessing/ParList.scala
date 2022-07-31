@@ -9,7 +9,18 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 //  List(9,10)             // partition 2
 // )
 // Note that we used the `apply` method with a varargs argument.
-case class ParList[A](partitions: List[List[A]])
+case class ParList[A](partitions: List[List[A]]) {
+  def foldLeft[To](default: To)(combine: (To, A) => To)(
+    combineIntermediate: (To, To) => To
+  ): To =
+    this.partitions.map(partition => partition.foldLeft(default)(combine)).foldLeft(default)(combineIntermediate)
+
+  def monoFoldLeft(default: A)(combine: (A, A) => A): A =
+    this.partitions.map(_.foldLeft(default)(combine)).foldLeft(default)(combine)
+
+  def toList =
+    this.partitions.flatten
+}
 
 object ParList {
   // The `*` at the end of List[A] is called a varargs. It means we can put as many arguments
@@ -32,4 +43,5 @@ object ParList {
   def byPartitionSize[A](partitionSize: Int, items: List[A]): ParList[A] =
     if (items.isEmpty) ParList()
     else ParList(items.grouped(partitionSize).toList)
+
 }
