@@ -132,6 +132,13 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
     }
   }
 
+  test("foldMap is consistent with map followed by monofoldLeft") {
+    forAll { (numbers: ParList[String], func: String => Int) =>
+      val monoid = Monoid.sumInt
+      assert(numbers.foldMap(func)(monoid) == numbers.map(func).monoFoldLeft(monoid))
+    }
+  }
+
   ignore("summary is consistent between implementations") {
     forAll { (samples: ParList[Sample]) =>
       val samplesList = samples.partitions.flatten

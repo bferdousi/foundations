@@ -8,16 +8,13 @@ object TemperatureExercises {
   // Step 1: Find the local minimums (for each partition the `Sample` with the coldest temperature).
   // Step 2: Find the minimum value among the local minimums.
   // Note: We'll write test in the file `ParListTest.scala`
-  def minSampleByTemperature(samples: ParList[Sample]): Option[Sample] = {
+  def minSampleByTemperature(samples: ParList[Sample]): Option[Sample] =
+    samples.foldMap(Option(_))(Monoid.minTemperatureSample)
 
-    implicit val sampleOrdering: Ordering[Sample] = (x: Sample, y: Sample) =>
-      (x.temperatureFahrenheit - y.temperatureFahrenheit).toInt
+  def minSampleTemperature(samples: ParList[Sample]): Option[Double] =
+    samples.foldMap[Option[Double]](sample => Some(sample.temperatureFahrenheit))(Monoid.minDouble)
 
-    val minSamples = samples.partitions.map(_.min)
-    minSamples.minOption
-  }
-
-  def minTemperatureWithFold(samples: ParList[Sample]): Option[Double] = {
+  def minTemperaminSampleByTemperaturetureWithFold(samples: ParList[Sample]): Option[Double] = {
 
     def combine(currValue: Option[Double], sample: Sample): Option[Double] =
       (currValue, sample) match {
@@ -63,7 +60,7 @@ object TemperatureExercises {
   }
 
   def sumTemperature(samples: ParList[Sample]): Double =
-    samples.mapReduce(_.temperatureFahrenheit)(Monoid.sumDouble)
+    samples.foldMap(_.temperatureFahrenheit)(Monoid.sumDouble)
 
   // c. Implement `averageTemperature` which finds the average temperature across all `Samples`.
   // `averageTemperature` should work as follow:
@@ -104,7 +101,7 @@ object TemperatureExercises {
 
   def averageTemperature(samples: ParList[Sample]): Option[Double] = {
     val (temperature, size) =
-      samples.mapReduce(sample => (sample.temperatureFahrenheit, 1))(Monoid.zip(Monoid.sumDouble, Monoid.sumInt))
+      samples.foldMap(sample => (sample.temperatureFahrenheit, 1))(Monoid.zip(Monoid.sumDouble, Monoid.sumInt))
     if (size > 0) Some(temperature / size)
     else None
   }

@@ -23,9 +23,12 @@ case class ParList[A](partitions: List[List[A]]) {
 
   def map[B](func: A => B): ParList[B] = ParList(this.partitions.map(l => l.map(func)))
 
-  def size: Int = this.mapReduce(_ => 1)(monoid = Monoid.sumInt)
+  def size: Int = this.foldMap(_ => 1)(monoid = Monoid.sumInt)
 
-  def mapReduce[To](update: A => To)(monoid: Monoid[To]): To = map(update).monoFoldLeft(monoid)
+  def foldMap[To](update: A => To)(monoid: Monoid[To]): To =
+    this.partitions
+      .map(_.foldLeft(monoid.default)((a, b) => monoid.combine(a, update(b))))
+      .foldLeft(monoid.default)((a, b) => monoid.combine(a, b))
 }
 
 object ParList {
