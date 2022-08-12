@@ -5,7 +5,12 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import TemperatureExercises._
 import org.scalacheck.{Arbitrary, Gen}
 
+import java.util.concurrent.Executors
+import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.global
+
 class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with ParListTestInstances {
+  implicit val ec: ExecutionContext = ExecutionContext.global
 
   ignore("Partionsize test") {
     forAll { (listSize: Int, numberOfPartions: Int) =>
@@ -36,31 +41,6 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
         Some(Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 22.1))
     )
   }
-
-  test("minSampleByTemperature example with fold Left") {
-    val samples = List(
-      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 50),
-      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 56.3),
-      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 23.4),
-      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 89.7),
-      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 22.1),
-      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 34.7),
-      Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 99.0)
-    )
-    val parSamples = ParList.byPartitionSize(3, samples)
-
-    assert(
-      minSampleWithFoldLeft(parSamples) ==
-        Some(Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 22.1))
-    )
-  }
-
-//  test("minSampleByTemperature oracle") {
-//    forAll { (samples: List[Sample]) =>
-//      val parSamples = ParList.byPartitionSize(3, samples)
-//      assert(samples.minByOption(_.temperatureFahrenheit) == minSampleByTemperature(parSamples))
-//    }
-//  }
 
   test("averageTemperature example") {
     val samples = List(
@@ -138,6 +118,15 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
     forAll { (numbers: ParList[String], func: String => Int) =>
       val monoid = Monoid.sumInt
       assert(numbers.foldMap(func)(monoid) == numbers.map(func).monoFoldLeft(monoid))
+    }
+  }
+
+  test("parfold map is same as fold map") {
+    val pool                          = Executors.newFixedThreadPool(3)
+    implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
+    forAll { (numbers: ParList[String], func: String => Int) =>
+      val monoid = Monoid.sumInt
+      assert(numbers.parFoldMap(func)(monoid) == numbers.foldMap(func)(monoid))
     }
   }
 

@@ -1,5 +1,6 @@
 package exercises.dataprocessing
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.math
 
 object TemperatureExercises {
@@ -9,58 +10,13 @@ object TemperatureExercises {
   // Step 2: Find the minimum value among the local minimums.
   // Note: We'll write test in the file `ParListTest.scala`
   def minSampleByTemperature(samples: ParList[Sample]): Option[Sample] =
-    samples.foldMap(Option(_))(Monoid.minTemperatureSample)
+    samples.parFoldMap(Option(_))(Monoid.minTemperatureSample)
 
   def minSampleTemperature(samples: ParList[Sample]): Option[Double] =
-    samples.foldMap[Option[Double]](sample => Some(sample.temperatureFahrenheit))(Monoid.minDouble)
-
-  def minTemperaminSampleByTemperaturetureWithFold(samples: ParList[Sample]): Option[Double] = {
-
-    def combine(currValue: Option[Double], sample: Sample): Option[Double] =
-      (currValue, sample) match {
-        case (None, sample: Sample)                                              => Some(sample.temperatureFahrenheit)
-        case (Some(minValue), sample) if sample.temperatureFahrenheit < minValue => Some(sample.temperatureFahrenheit)
-
-      }
-
-    def combineIntermediate(currValue: Option[Double], intermediateValue: Option[Double]) =
-      (currValue, intermediateValue) match {
-        case (None, maybeV2)                         => maybeV2
-        case (maybeV1, None)                         => maybeV1
-        case (Some(v1: Double), Some(v2)) if v1 < v2 => Some(v1)
-        case (Some(v1), Some(v2: Double)) if v2 < v1 => Some(v2)
-      }
-
-    val default = Option.empty[Double]
-    samples.partitions.map((p: List[Sample]) => p.foldLeft(default)(combine)).foldLeft(default)(combineIntermediate)
-
-  }
-
-  def minSampleWithFoldLeft(samples: ParList[Sample]): Option[Sample] = {
-    def combine(currValue: Option[Sample], sample: Sample): Option[Sample] =
-      (currValue, sample) match {
-        case (None, sample: Sample) => Some(sample)
-        case (Some(currMinSample), sample) if sample.temperatureFahrenheit < currMinSample.temperatureFahrenheit =>
-          Some(sample)
-        case (currValue, _) => currValue
-
-      }
-
-    def combineIntermediate(currValue: Option[Sample], intermediateValue: Option[Sample]): Option[Sample] =
-      (currValue, intermediateValue) match {
-        case (None, maybeV2)                                                                             => maybeV2
-        case (maybeV1, None)                                                                             => maybeV1
-        case (Some(v1: Sample), Some(v2: Sample)) if v1.temperatureFahrenheit < v2.temperatureFahrenheit => Some(v1)
-        case (Some(v1: Sample), Some(v2: Sample)) if v2.temperatureFahrenheit < v1.temperatureFahrenheit => Some(v2)
-
-      }
-
-    val default = Option.empty[Sample]
-    samples.foldLeft(default)(combine)(combineIntermediate)
-  }
+    samples.parFoldMap[Option[Double]](sample => Some(sample.temperatureFahrenheit))(Monoid.minDouble)
 
   def sumTemperature(samples: ParList[Sample]): Double =
-    samples.foldMap(_.temperatureFahrenheit)(Monoid.sumDouble)
+    samples.parFoldMap(_.temperatureFahrenheit)(Monoid.sumDouble)
 
   // c. Implement `averageTemperature` which finds the average temperature across all `Samples`.
   // `averageTemperature` should work as follow:
@@ -101,7 +57,7 @@ object TemperatureExercises {
 
   def averageTemperature(samples: ParList[Sample]): Option[Double] = {
     val (temperature, size) =
-      samples.foldMap(sample => (sample.temperatureFahrenheit, 1))(Monoid.zip(Monoid.sumDouble, Monoid.sumInt))
+      samples.parFoldMap(sample => (sample.temperatureFahrenheit, 1))(Monoid.zip(Monoid.sumDouble, Monoid.sumInt))
     if (size > 0) Some(temperature / size)
     else None
   }
