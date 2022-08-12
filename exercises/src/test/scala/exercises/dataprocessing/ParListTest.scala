@@ -119,6 +119,8 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
 
   checkMonoid(Monoid.zip(Monoid.sumInt, Monoid.sumInt), Gen.zip(genInt, genInt), "zip")
 
+  checkMonoid(Monoid.minTemperatureSample, Gen.option(sampleGen), "min temperature sample")
+
   test("sum works by monofold") {
     forAll { (parlist: ParList[Sample]) =>
       val temperatures = parlist.toList.map(_.temperatureFahrenheit)
