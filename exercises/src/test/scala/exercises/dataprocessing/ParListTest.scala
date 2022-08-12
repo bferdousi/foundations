@@ -3,6 +3,7 @@ package exercises.dataprocessing
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import TemperatureExercises._
+import org.scalacheck.{Arbitrary, Gen}
 
 class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with ParListTestInstances {
 
@@ -53,23 +54,13 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
         Some(Sample("Africa", "Algeria", None, "Algiers", 8, 1, 2020, 22.1))
     )
   }
-  test("minSampleByTemperature returns the coldest Sample") {
-    forAll { (samples: List[Sample]) =>
-      val parSamples = ParList.byPartitionSize(3, samples)
 
-      for {
-        coldest <- minSampleByTemperature(parSamples)
-        sample  <- samples
-      } assert(coldest.temperatureFahrenheit <= sample.temperatureFahrenheit)
-    }
-  }
-
-  test("minSampleByTemperature oracle") {
-    forAll { (samples: List[Sample]) =>
-      val parSamples = ParList.byPartitionSize(3, samples)
-      assert(samples.minByOption(_.temperatureFahrenheit) == minSampleByTemperature(parSamples))
-    }
-  }
+//  test("minSampleByTemperature oracle") {
+//    forAll { (samples: List[Sample]) =>
+//      val parSamples = ParList.byPartitionSize(3, samples)
+//      assert(samples.minByOption(_.temperatureFahrenheit) == minSampleByTemperature(parSamples))
+//    }
+//  }
 
   test("averageTemperature example") {
     val samples = List(
@@ -101,9 +92,43 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
     }
   }
 
-  test("monofold test oracle") {
-    forAll { (parList: ParList[Int], default: Int) =>
-      assert(parList.monoFoldLeft(default)(_ + _) == parList.toList.foldLeft(default)(_ + _))
+  val genDouble: Gen[Double] = Gen.choose(-100.0f, 100.0f).map(_.toDouble)
+  val genInt: Gen[Int]       = Gen.choose(Int.MinValue, Int.MaxValue)
+
+  implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
+    PropertyCheckConfiguration(minSuccessful = 1000)
+
+  def checkMonoid[A](param: Monoid[A], gen: Gen[A], name: String) = {
+    test(s"${name} is default no-op") {
+      forAll(gen) { (value: A) =>
+        assert(param.combine(param.default, value) == value)
+        assert(param.combine(value, param.default) == value)
+      }
+    }
+    test(s"${name} is combine associative") {
+      forAll(gen, gen, gen) { (value1: A, value2: A, value3: A) =>
+        assert(
+          param.combine(param.combine(value1, value2), value3) == param.combine(value1, param.combine(value2, value3))
+        )
+      }
+    }
+  }
+  checkMonoid(Monoid.sumInt, genInt, "sumInt")
+
+  checkMonoid(Monoid.sumDouble, genDouble, "sumDouble")
+
+  checkMonoid(Monoid.zip(Monoid.sumInt, Monoid.sumInt), Gen.zip(genInt, genInt), "zip")
+
+  test("sum works by monofold") {
+    forAll { (parlist: ParList[Sample]) =>
+      val temperatures = parlist.toList.map(_.temperatureFahrenheit)
+      assert(sumTemperature(parlist) == temperatures.sum)
+    }
+  }
+
+  test("size works by monofold") {
+    forAll { (parlist: ParList[Sample]) =>
+      assert(parlist.size == parlist.toList.size)
     }
   }
 

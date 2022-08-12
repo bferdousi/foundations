@@ -15,11 +15,17 @@ case class ParList[A](partitions: List[List[A]]) {
   ): To =
     this.partitions.map(partition => partition.foldLeft(default)(combine)).foldLeft(default)(combineIntermediate)
 
-  def monoFoldLeft(default: A)(combine: (A, A) => A): A =
-    this.partitions.map(_.foldLeft(default)(combine)).foldLeft(default)(combine)
+  def monoFoldLeft(param: Monoid[A]): A =
+    this.partitions.map(_.foldLeft(param.default)(param.combine)).foldLeft(param.default)(param.combine)
 
   def toList =
     this.partitions.flatten
+
+  def map[B](func: A => B): ParList[B] = ParList(this.partitions.map(l => l.map(func)))
+
+  def size: Int = this.mapReduce(_ => 1)(monoid = Monoid.sumInt)
+
+  def mapReduce[To](update: A => To)(monoid: Monoid[To]): To = map(update).monoFoldLeft(monoid)
 }
 
 object ParList {

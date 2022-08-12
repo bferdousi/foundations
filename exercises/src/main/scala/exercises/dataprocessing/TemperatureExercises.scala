@@ -62,6 +62,9 @@ object TemperatureExercises {
     samples.foldLeft(default)(combine)(combineIntermediate)
   }
 
+  def sumTemperature(samples: ParList[Sample]): Double =
+    samples.mapReduce(_.temperatureFahrenheit)(Monoid.sumDouble)
+
   // c. Implement `averageTemperature` which finds the average temperature across all `Samples`.
   // `averageTemperature` should work as follow:
   // Step 1: Compute the sum of all samples temperatures
@@ -99,11 +102,12 @@ object TemperatureExercises {
 
   def sizeSampleWithFoldLeft(samples: ParList[Sample]): Int = samples.foldLeft(0)((acc, _) => acc + 1)(_ + _)
 
-  def averageTemperature(samples: ParList[Sample]): Option[Double] =
-    sumAndSizeTemperature(samples) match {
-      case Some((sum, size)) if size > 0 => Some(sum / size)
-      case _                             => None
-    }
+  def averageTemperature(samples: ParList[Sample]): Option[Double] = {
+    val (temperature, size) =
+      samples.mapReduce(sample => (sample.temperatureFahrenheit, 1))(Monoid.zip(Monoid.sumDouble, Monoid.sumInt))
+    if (size > 0) Some(temperature / size)
+    else None
+  }
 
   // d. Implement `foldLeft` and then move it inside the class `ParList`.
   // `foldLeft` should work as follow:
