@@ -1,5 +1,7 @@
 package exercises.dataprocessing
 
+import java.util
+
 trait Monoid[A] {
 
   def default: A;
@@ -37,6 +39,29 @@ object Monoid {
         (monoidA.combine(first._1, second._1), monoidB.combine(first._2, second._2))
     }
 
+  def zip4[A, B, C, D](
+    monoidA: Monoid[A],
+    monoidB: Monoid[B],
+    monoidC: Monoid[C],
+    monoidD: Monoid[D]
+  ): Monoid[(A, B, C, D)] = new Monoid[(A, B, C, D)] {
+    override def default: (A, B, C, D) = (monoidA.default, monoidB.default, monoidC.default, monoidD.default)
+
+    override def combine: ((A, B, C, D), (A, B, C, D)) => (A, B, C, D) = (first, second) =>
+      (
+        monoidA.combine(first._1, second._1),
+        monoidB.combine(first._2, second._2),
+        monoidC.combine(first._3, second._3),
+        monoidD.combine(first._4, second._4)
+      )
+  }
+
+  object SummaryMonoid extends Monoid[Summary] {
+    override def default: Summary = Summary(None, None, 0, 0)
+
+    override def combine: (Summary, Summary) => Summary = ???
+  }
+
   object minDouble extends Monoid[Option[Double]] {
     override def default: Option[Double] = None
 
@@ -48,16 +73,22 @@ object Monoid {
       }
   }
 
-  object minTemperatureSample extends Monoid[Option[Sample]] {
-    override def default: Option[Sample] = None
+  val minTemperatureSampleMonoid =
+    genericSampleMonoid((v1, v2) => if (v1.temperatureFahrenheit <= v2.temperatureFahrenheit) v1 else v2)
 
-    override def combine: (Option[Sample], Option[Sample]) => Option[Sample] = (first, second) =>
-      (first, second) match {
-        case (Some(v1), Some(v2)) if v1.temperatureFahrenheit < v2.temperatureFahrenheit => Some(v1)
-        case (Some(_), Some(v2))                                                         => Some(v2)
-        case (v1, None)                                                                  => v1
-        case (None, v2)                                                                  => v2
-      }
-  }
+  val maxTemperatureSampleMonoid =
+    genericSampleMonoid((v1, v2) => if (v1.temperatureFahrenheit >= v2.temperatureFahrenheit) v1 else v2)
+
+  def genericSampleMonoid(func: (Sample, Sample) => Sample): Monoid[Option[Sample]] =
+    new Monoid[Option[Sample]] {
+      override def default: Option[Sample] = None
+
+      override def combine: (Option[Sample], Option[Sample]) => Option[Sample] = (first, second) =>
+        (first, second) match {
+          case (Some(v1), Some(v2)) => Some(func(v1, v2))
+          case (v1, None)           => v1
+          case (None, v2)           => v2
+        }
+    }
 
 }

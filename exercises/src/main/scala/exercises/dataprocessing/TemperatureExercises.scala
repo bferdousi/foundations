@@ -10,7 +10,7 @@ object TemperatureExercises {
   // Step 2: Find the minimum value among the local minimums.
   // Note: We'll write test in the file `ParListTest.scala`
   def minSampleByTemperature(samples: ParList[Sample]): Option[Sample] =
-    samples.parFoldMap(Option(_))(Monoid.minTemperatureSample)
+    samples.parFoldMap(Option(_))(Monoid.minTemperatureSampleMonoid)
 
   def minSampleTemperature(samples: ParList[Sample]): Option[Double] =
     samples.parFoldMap[Option[Double]](sample => Some(sample.temperatureFahrenheit))(Monoid.minDouble)
@@ -124,15 +124,57 @@ object TemperatureExercises {
   // should return the same result as `summaryList`
   def summaryParList(samples: ParList[Sample]): Summary =
     Summary(
-      min = ???,
-      max = ???,
-      sum = ???,
-      size = ???
+      min = samples.parFoldMap(Option(_))(Monoid.minTemperatureSampleMonoid),
+      max = samples.parFoldMap(Option(_))(Monoid.maxTemperatureSampleMonoid),
+      sum = samples.parFoldMap(_.temperatureFahrenheit)(Monoid.sumDouble),
+      size = samples.parFoldMap(_ => 1)(Monoid.sumInt)
     )
 
   // Implement `summaryParListOnePass` using `parFoldMap` only ONCE.
   // Note: In `ParListTest.scala`, there is already a test checking that `summaryParListOnePass`
   // should return the same result as `summaryList`
-  def summaryParListOnePass(samples: ParList[Sample]): Summary =
-    ???
+  def summaryParListOnePass(samples: ParList[Sample]): Summary = {
+    val res = samples.parFoldMap(sample => (Option(sample), Option(sample), sample.temperatureFahrenheit, 1))(
+      Monoid.zip4(Monoid.minTemperatureSampleMonoid, Monoid.maxTemperatureSampleMonoid, Monoid.sumDouble, Monoid.sumInt)
+    )
+    Summary(res._1, res._2, res._3, res._4)
+  }
+
+  def sampleToAggregatedCitySummary(sample: Sample): Map[String, Summary] = Map(
+    sample.city -> Summary(Some(sample), Some(sample), sample.temperatureFahrenheit, 1)
+  )
+  def sampleToAggregatedPropertySummary[A](getProperty: Sample => A)(sample: Sample): Map[A, Summary] = Map(
+    getProperty(sample) -> Summary(Some(sample), Some(sample), sample.temperatureFahrenheit, 1)
+  )
+
+  def getCombinedSummary(first: Summary, second: Option[Summary]): Summary =
+    (first, second) match {
+      case (v, None)              => v
+      case (v, Some(v2: Summary)) => SummaryMonoid.combine(v, v2)
+    }
+
+  def merge(first: Map[String, Summary], second: Map[String, Summary]): Map[String, Summary] =
+    first ++ second.map { case (k, v) =>
+      k -> getCombinedSummary(v, first.get(k))
+    }
+
+  def aggregatedSummaryMonoid: Monoid[Map[String, Summary]] = new Monoid[Map[String, Summary]] {
+    override def default: Map[String, Summary] = Map.empty
+
+    override def combine: (Map[String, Summary], Map[String, Summary]) => Map[String, Summary] = (first, second) =>
+      merge(first, second)
+  }
+  def aggregatedGenericSummaryMonoid[A]: Monoid[Map[A, Summary]] = new Monoid[Map[A, Summary]] {
+    override def default: Map[A, Summary] = Map.empty
+
+    override def combine: (Map[A, Summary], Map[A, Summary]) => Map[A, Summary] = (first, second) =>
+      first ++ second.map { case (k, v) =>
+        k -> getCombinedSummary(v, first.get(k))
+      }
+  }
+
+  def aggregateByCity(samples: ParList[Sample]): Map[String, Summary] = genericAggregateByProperty(_.city)(samples)
+
+  def genericAggregateByProperty[A](getProperty: Sample => A)(samples: ParList[Sample]): Map[A, Summary] =
+    samples.parFoldMap(sampleToAggregatedPropertySummary(getProperty))(aggregatedGenericSummaryMonoid)
 }

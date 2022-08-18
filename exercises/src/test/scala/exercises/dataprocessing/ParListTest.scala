@@ -99,7 +99,7 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
 
   checkMonoid(Monoid.zip(Monoid.sumInt, Monoid.sumInt), Gen.zip(genInt, genInt), "zip")
 
-  checkMonoid(Monoid.minTemperatureSample, Gen.option(sampleGen), "min temperature sample")
+  checkMonoid(Monoid.minTemperatureSampleMonoid, Gen.option(sampleGen), "min temperature sample")
 
   test("sum works by monofold") {
     forAll { (parlist: ParList[Sample]) =>
@@ -130,7 +130,7 @@ class ParListTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks with P
     }
   }
 
-  ignore("summary is consistent between implementations") {
+  test("summary is consistent between implementations") {
     forAll { (samples: ParList[Sample]) =>
       val samplesList = samples.partitions.flatten
       val reference   = summaryList(samples.partitions.flatten)
