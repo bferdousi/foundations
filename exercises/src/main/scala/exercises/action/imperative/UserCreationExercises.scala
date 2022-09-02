@@ -13,13 +13,14 @@ import scala.util.{Failure, Success, Try}
 object UserCreationApp extends App {
   import UserCreationExercises._
 
-  readUser()
+  //YreadUser()
+  println(readSubscribeToMailingList())
 }
 
 object UserCreationExercises {
   val dateOfBirthFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
 
-  case class User(name: String, dateOfBirth: LocalDate, createdAt: Instant)
+  case class User(name: String, dateOfBirth: LocalDate, subscribedToMailingList: Boolean, createdAt: Instant)
 
   def readUser(): User = {
     println("What's your name?")
@@ -27,7 +28,7 @@ object UserCreationExercises {
     println("What's your date of birth? [dd-mm-yyyy]")
     val dateOfBirth = LocalDate.parse(StdIn.readLine(), dateOfBirthFormatter)
     val now         = Instant.now()
-    val user        = User(name, dateOfBirth, now)
+    val user        = User(name, dateOfBirth, false, now)
     println(s"User is $user")
     user
   }
@@ -44,8 +45,23 @@ object UserCreationExercises {
   // Throws an exception.
   // Note: You can read a user input using `StdIn.readLine()`.
   // Note: You can use `throw new IllegalArgumentException("...")` to throw an exception.
-  def readSubscribeToMailingList(): Boolean =
-    ???
+  def readSubscribeToMailingList(): Boolean = {
+    println("Would you like to subscribe to our mailing list? [Y/N]")
+    val decision = StdIn.readLine()
+    parseYesOrNo(decision)
+  }
+
+  def parseYesOrNo(decision: String): Boolean =
+    decision match {
+      case "Y" => true
+      case "N" => false
+      case _   => throw new IllegalArgumentException("Enter Y or N")
+    }
+
+  def read(console: Console)(message: String): String = {
+    console.writeLine(message)
+    console.readLine()
+  }
 
   // 2. How can we test `readSubscribeToMailingList`?
   // We cannot use example-based tests or property-based tests
@@ -56,8 +72,10 @@ object UserCreationExercises {
   // Then, try to test this version using property-based testing.
   // Note: Check the `Console` companion object.
   // Bonus: Try to write a property-based test for `readSubscribeToMailingList`
-  def readSubscribeToMailingList(console: Console): Boolean =
-    ???
+  def readSubscribeToMailingList(console: Console): Boolean = {
+    val answer = read(console)("Would you like to subscribe to our mailing list? [Y/N]")
+    parseYesOrNo(answer)
+  }
 
   // 3. Implement `readDateOfBirth` which asks the date of birth of the user.
   // User must answer using the format `dd-mm-yyyy`, e.g. "18-03-2001" for 18th of March 2001.
@@ -71,8 +89,10 @@ object UserCreationExercises {
   // Throws an exception.
   // Note: You can use `LocalDate.parse` to parse a String into a LocalDate.
   // Note: You can use the formatter `dateOfBirthFormatter` (in scope).
-  def readDateOfBirth(console: Console): LocalDate =
-    ???
+  def readDateOfBirth(console: Console): LocalDate = {
+    val dob = read(console)("What's your date of birth? [dd-mm-yyyy]")
+    LocalDate.parse(dob, dateOfBirthFormatter)
+  }
 
   // 4. Implement a testable version of `readUser`.
   // For example,
@@ -92,8 +112,14 @@ object UserCreationExercises {
   // Note: You will need to add `subscribedToMailingList: Boolean` field to `User`.
   // Note: How can you mock the current time? Check the `Clock` class in this package
   //       and update the signature of `readUser`.
-  def readUser(console: Console): User =
-    ???
+  def readUser(console: Console, clock: Clock): User = {
+    val name                   = read(console)("What's your name?")
+    val dob                    = readDateOfBirth(console)
+    val subscribeToMailingList = readSubscribeToMailingList(console)
+    val user                   = User(name, dob, subscribeToMailingList, clock.now())
+    console.writeLine(s"User is ${user}")
+    user
+  }
 
   //////////////////////////////////////////////
   // PART 2: Error handling

@@ -17,48 +17,81 @@ import scala.util.{Failure, Success, Try}
 // testOnly exercises.action.imperative.UserCreationExercisesTest
 class UserCreationExercisesTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks {
 
-  ignore("readSubscribeToMailingList example") {
-    val inputs  = ListBuffer("N")
-    val outputs = ListBuffer.empty[String]
-    val console = Console.mock(inputs, outputs)
-    val result  = readSubscribeToMailingList(console)
-
-    assert(result == false)
-    assert(outputs.toList == List("Would you like to subscribe to our mailing list? [Y/N]"))
+  test("parse Y/N parses Yes") {
+    assert(parseYesOrNo("Y"))
+  }
+  test("parse Y/N parses No") {
+    assert(!parseYesOrNo("N"))
+  }
+  test("parse Y/N throws error for invalid input") {
+    assertThrows[IllegalArgumentException](parseYesOrNo("Nope"))
   }
 
-  ignore("readSubscribeToMailingList example failure") {
+  test("readSubscribeToMailingList example") {
+    forAll { (value: Boolean) =>
+      val yesOrNo = if (value) "Y" else "N"
+      val inputs  = ListBuffer(yesOrNo)
+      val outputs = ListBuffer.empty[String]
+      val console = Console.mock(inputs, outputs)
+      val result  = readSubscribeToMailingList(console)
+
+      assert(result == value)
+      assert(outputs.toList == List("Would you like to subscribe to our mailing list? [Y/N]"))
+    }
+
+  }
+
+  test("readSubscribeToMailingList example failure") {
     val console = Console.mock(ListBuffer("Never"), ListBuffer())
     val result  = Try(readSubscribeToMailingList(console))
 
     assert(result.isFailure)
   }
 
-  ignore("readDateOfBirth example success") {
-    val console = Console.mock(ListBuffer("21-07-1986"), ListBuffer())
-    val result  = readDateOfBirth(console)
+  test("readDateOfBirth example success") {
+    forAll { (date: LocalDate) =>
+      val console = Console.mock(ListBuffer(date.format(dateOfBirthFormatter)), ListBuffer())
+      val result  = readDateOfBirth(console)
 
-    assert(result == LocalDate.of(1986, 7, 21))
+      assert(result == date)
+    }
+
   }
 
-  ignore("readDateOfBirth example failure") {
+  test("readDateOfBirth example failure") {
     val console = Console.mock(ListBuffer("21/07/1986"), ListBuffer())
     val result  = Try(readDateOfBirth(console))
 
     assert(result.isFailure)
   }
 
-  ignore("readUser example") {
+  test("read User property based testing") {
+    forAll { (name: String, dob: LocalDate, now: Instant, yesOrNo: Boolean) =>
+      val inputs   = ListBuffer(name, dob.format(dateOfBirthFormatter), if (yesOrNo) "Y" else "N")
+      val outputs  = ListBuffer.empty[String]
+      val console  = Console.mock(inputs, outputs)
+      val clock    = Clock.constant(now)
+      val result   = readUser(console, clock)
+      val expected = User(name, dob, yesOrNo, clock.now())
+
+      assert(result == expected)
+
+    }
+  }
+
+  test("readUser example") {
     val inputs  = ListBuffer("Eda", "18-03-2001", "Y")
     val outputs = ListBuffer.empty[String]
     val console = Console.mock(inputs, outputs)
-    val result  = readUser(console)
+    val clock   = Clock.constant(Instant.ofEpochSecond(123234))
+    val now     = clock.now()
+    val result  = readUser(console, clock)
 
     val expected = User(
       name = "Eda",
       dateOfBirth = LocalDate.of(2001, 3, 18),
-//      subscribedToMailingList = true,
-      createdAt = Instant.now()
+      subscribedToMailingList = true,
+      createdAt = now
     )
 
     assert(result == expected)
