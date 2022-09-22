@@ -142,8 +142,46 @@ object UserCreationExercises {
   // Note: `maxAttempt` must be greater than 0, if not you should throw an exception.
   // Note: You can implement the retry logic using recursion or a for/while loop. I suggest
   //       trying both possibilities.
-  def readSubscribeToMailingListRetry(console: Console, maxAttempt: Int): Boolean =
-    ???
+  @tailrec
+  def readSubscribeToMailingListRetry(console: Console, maxAttempt: Int): Boolean = {
+    require(maxAttempt > 0, "Maximum number of attempt cannot be 0")
+    val errorMessage = """Incorrect format, enter "Y" for Yes or "N" for "No""""
+
+    val v = Try(readSubscribeToMailingList(console))
+    if (v.isFailure) {
+      console.writeLine(errorMessage)
+      if (maxAttempt == 1) {
+        throw v.failed.get
+      } else {
+        readSubscribeToMailingListRetry(console, maxAttempt - 1)
+      }
+    } else {
+      v.get
+    }
+  }
+
+  def readSubscribeToMailingListRetryLoop(console: Console, maxAttempt: Int): Boolean = {
+    require(maxAttempt > 0, "Maximum number of attempt cannot be 0")
+    val errorMessage            = """Incorrect format, enter "Y" for Yes or "N" for "No""""
+    var output: Option[Boolean] = None
+    (1.to(maxAttempt)).foreach { attempt =>
+      output match {
+        case None =>
+          val v = Try(readSubscribeToMailingList(console))
+          if (v.isFailure) {
+            console.writeLine(errorMessage)
+            if (attempt == maxAttempt) {
+              throw v.failed.get
+            }
+          } else {
+            output = Some(v.get)
+          }
+
+        case Some(_) => ()
+      }
+    }
+    output.get
+  }
 
   // 6. Implement `readDateOfBirthRetry` which behaves like
   // `readDateOfBirth` but retries when the user enters an invalid input.
@@ -160,11 +198,65 @@ object UserCreationExercises {
   // [Prompt] Incorrect format, for example enter "18-03-2001" for 18th of March 2001
   // Throws an exception because the user only had 1 attempt and they entered an invalid input.
   // Note: `maxAttempt` must be greater than 0, if not you should throw an exception.
-  def readDateOfBirthRetry(console: Console, maxAttempt: Int): LocalDate =
-    ???
+  @tailrec
+  def readDateOfBirthRetry(console: Console, maxAttempt: Int): LocalDate = {
+    require(maxAttempt > 0, "Maximum number of attempt cannot be 0")
+    val errorMessage = """Incorrect format, for example enter "18-03-2001" for 18th of March 2001"""
+
+    Try(readDateOfBirth(console)) match {
+      case Success(dob) => dob
+      case Failure(exception) =>
+        console.writeLine(errorMessage)
+        if (maxAttempt == 1) throw exception else readDateOfBirthRetry(console, maxAttempt - 1)
+    }
+  }
+
+  def readDateOfBirthLoop(console: Console, maxAttempt: Int): LocalDate = {
+    require(maxAttempt > 0, "Maximum number of attempt cannot be 0")
+    val errorMessage = """Incorrect format, for example enter "18-03-2001" for 18th of March 2001"""
+    1.to(maxAttempt)
+      .foldLeft(Option.empty[LocalDate]) { (state, attempt) =>
+        state match {
+          case Some(value) => Some(value)
+          case None =>
+            Try(readDateOfBirth(console)) match {
+              case Success(dob) => Some(dob)
+              case Failure(exception) =>
+                console.writeLine(errorMessage)
+                if (attempt == maxAttempt) throw exception
+                else None
+            }
+        }
+      }
+      .get
+
+  }
 
   // 7. Update `readUser` so that it allows the user to make up to 2 mistakes (3 attempts)
   // when entering their date of birth and mailing list subscription flag.
+
+  def readUserRetry(console: Console, clock: Clock, maxAttempt: Int = 3) = {
+    require(maxAttempt > 0, "Maximum number of attempt cannot be 0")
+
+    @tailrec
+    def readUserX(
+      name: Option[String],
+      dob: Option[LocalDate],
+      x: Option[Boolean]
+    ): (Option[String], Option[LocalDate], Option[Boolean]) =
+      (name, dob, x) match {
+        case (None, _, _)             => readUserX(Some(read(console)("What's your name?")), None, None)
+        case (Some(name), None, None) => readUserX(Some(name), Some(readDateOfBirthRetry(console, 3)), None)
+        case (Some(name), Some(dob), None) =>
+          readUserX(Some(name), Some(dob), Some(readSubscribeToMailingListRetry(console, maxAttempt)))
+      }
+
+    val (nameOp, dobOp, xOp) = readUserX(None, None, None)
+    val user                 = User(nameOp.get, dobOp.get, xOp.get, clock.now())
+
+    console.writeLine(s"User is ${user}")
+    user
+  }
 
   //////////////////////////////////////////////
   // Bonus question (not covered by the videos)
