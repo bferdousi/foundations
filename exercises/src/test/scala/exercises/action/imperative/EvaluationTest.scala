@@ -26,5 +26,40 @@ class EvaluationTest extends AnyFunSuite {
     action()
     assert(counter == 2)
   }
+  test("a val is evaluated eagerly when it is created") {
+    var counter     = 0
+    val value: Unit = counter += 1
+    assert(counter == 1)
+  }
+  test("a by name  parameter is evaluated when accessed") {
+    def func[A](value: Option[A], fallback: => A): A =
+      value match {
+        case Some(value) => value
+        case None        => fallback
+      }
+    var counter = 0
+    def action() =
+      counter += 1
+
+    func(Some("test"), action)
+    assert(counter == 0)
+    func(None, action)
+    assert(counter == 1)
+  }
+  test("a by value  parameter is evaluated when function called") {
+    def func[A](value: Option[A], fallback: A): A =
+      value match {
+        case Some(value) => value
+        case None        => fallback
+      }
+    var counter = 0
+    def action() =
+      counter += 1
+
+    func(Some("test"), action)
+    assert(counter == 1)
+    func(None, action)
+    assert(counter == 2)
+  }
 
 }
