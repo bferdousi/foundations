@@ -1,11 +1,9 @@
 package exercises.action.fp.console
 
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-
 import exercises.action.fp.IO
 
-import scala.util.{Failure, Success, Try}
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 // Run the App using the green arrow next to object (if using IntelliJ)
 // or run `sbt` in the terminal to open it in shell mode then type:
@@ -20,7 +18,7 @@ object UserCreationServiceApp extends App {
 
 class UserCreationService(console: Console, clock: Clock) {
   import UserCreationService._
-
+  import console.{readLine, writeLine}
   // 1. `readName` works as we expect, but `IO` makes the code
   // more difficult to read by requiring:
   // * to wrap the entire method in `IO { }`
@@ -31,39 +29,33 @@ class UserCreationService(console: Console, clock: Clock) {
   // Then, we'll refactor `readName` with `andThen`.
   // Note: You can find tests in `exercises.action.fp.console.UserCreationServiceTest`
   val readName: IO[String] =
-    IO {
-      console.writeLine("What's your name?").unsafeRun()
-      console.readLine.unsafeRun()
-    }
+    writeLine("What's your name?").andThen(readLine)
 
   // 2. Refactor `readDateOfBirth` so that the code combines the three internal `IO`
   // instead of executing each `IO` one after another using `unsafeRun`.
   // For example, try to use `andThen`.
   // If it doesn't work investigate the methods `map` and `flatMap` on the `IO` trait.
   val readDateOfBirth: IO[LocalDate] =
-    IO {
-      console.writeLine("What's your date of birth? [dd-mm-yyyy]").unsafeRun()
-      val line = console.readLine.unsafeRun()
-      parseDateOfBirth(line).unsafeRun()
-    }
+    writeLine("What's your date of birth? [dd-mm-yyyy]")
+      .andThen(readLine)
+      .flatMap(parseDateOfBirth)
 
   // 3. Refactor `readSubscribeToMailingList` and `readUser` using the same techniques as `readDateOfBirth`.
   val readSubscribeToMailingList: IO[Boolean] =
-    IO {
-      console.writeLine("Would you like to subscribe to our mailing list? [Y/N]").unsafeRun()
-      val line = console.readLine.unsafeRun()
-      parseLineToBoolean(line).unsafeRun()
-    }
+    writeLine("Would you like to subscribe to our mailing list? [Y/N]")
+      .andThen(readLine)
+      .flatMap(parseLineToBoolean)
 
   val readUser: IO[User] =
-    IO {
-      val name        = readName.unsafeRun()
-      val dateOfBirth = readDateOfBirth.unsafeRun()
-      val subscribed  = readSubscribeToMailingList.unsafeRun()
-      val now         = clock.now.unsafeRun()
-      val user        = User(name, dateOfBirth, subscribed, now)
-      console.writeLine(s"User is $user").unsafeRun()
-      user
+    readName.flatMap { name =>
+      readDateOfBirth.flatMap(dateOfBirth =>
+        readSubscribeToMailingList.flatMap(subscribed =>
+          clock.now.flatMap { now =>
+            val user = User(name, dateOfBirth, subscribed, now)
+            writeLine(s"User is $user").map(_ => user)
+          }
+        )
+      )
     }
 
   //////////////////////////////////////////////
