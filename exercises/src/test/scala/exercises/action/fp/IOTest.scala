@@ -67,16 +67,36 @@ class IOTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks {
   // PART 3: Error handling
   //////////////////////////////////////////////
 
-  test("onError") {}
+  test("onError succeeds") {
+    var count = 0
 
-  ignore("retry, maxAttempt must be greater than 0") {
+    def countError(e: Throwable): IO[Unit] =
+      IO {
+        count = count + 1
+      }
+     val x  = IO(1).onError(countError).unsafeRun()
+    assert(x == 1)
+    assert(count == 0)
+  }
+  test("onError fails") {
+    var count = 0
+    def countError(e: Throwable): IO[Unit] =
+      IO {
+        count= count+1
+      }
+
+    assertThrows[Exception](IO(throw new Exception("Boom")).onError(countError).unsafeRun())
+    assert(count == 1)
+  }
+
+  test("retry, maxAttempt must be greater than 0") {
     val retryAction = IO(1).retry(0)
     val result      = Try(retryAction.unsafeRun())
 
     assert(result.isFailure)
   }
 
-  ignore("retry until action succeeds") {
+  test("retry until action succeeds") {
     var counter = 0
     val error   = new Exception("Boom")
     val action = IO {
@@ -93,7 +113,7 @@ class IOTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks {
     assert(counter == 3)
   }
 
-  ignore("retry fails if maxAttempt is too low") {
+  test("retry fails if maxAttempt is too low") {
     var counter = 0
     val error   = new Exception("Boom")
     val action = IO {

@@ -1,19 +1,14 @@
 package exercises.action.fp.console
 
-import java.time.{Instant, LocalDate}
-
 import exercises.action.DateGenerator._
 import exercises.action.fp.console.UserCreationService._
-import exercises.action.fp
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
+import java.time.{Instant, LocalDate}
 import scala.collection.mutable.ListBuffer
-import org.scalacheck.Arbitrary.arbitrary
-import org.scalacheck.Gen
-
 import scala.util.{Success, Try}
 
 // Run the test using the green arrow next to class name (if using IntelliJ)
@@ -69,9 +64,9 @@ class UserCreationServiceTest extends AnyFunSuite with ScalaCheckDrivenPropertyC
       assert(result.isFailure)
       assert(
         outputs.toList == List(
-          "What's your date of birth? [dd-mm-yyyy]"
+          "What's your date of birth? [dd-mm-yyyy]",
           // Uncomment after adding `onError` to `readDateOfBirth`
-          // """Incorrect format, for example enter "18-03-2001" for 18th of March 2001""",
+           """Incorrect format, for example enter "18-03-2001" for 18th of March 2001""",
         )
       )
     }
@@ -103,9 +98,9 @@ class UserCreationServiceTest extends AnyFunSuite with ScalaCheckDrivenPropertyC
       assert(result.isFailure)
       assert(
         outputs.toList == List(
-          "Would you like to subscribe to our mailing list? [Y/N]"
+          "Would you like to subscribe to our mailing list? [Y/N]",
           // Uncomment after adding `onError` to `readSubscribeToMailingList`
-          // """Incorrect format, enter "Y" for Yes or "N" for "No"""",
+           """Incorrect format, enter "Y" for Yes or "N" for "No"""",
         )
       )
     }
@@ -131,7 +126,7 @@ class UserCreationServiceTest extends AnyFunSuite with ScalaCheckDrivenPropertyC
     }
   }
 
-  ignore("readUser with retry") {
+  test("readUser with retry") {
     forAll(
       arbitrary[String],
       Gen.listOf(invalidDateGen),
