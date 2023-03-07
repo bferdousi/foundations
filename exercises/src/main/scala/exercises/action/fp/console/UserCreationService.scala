@@ -36,27 +36,30 @@ class UserCreationService(console: Console, clock: Clock) {
   // For example, try to use `andThen`.
   // If it doesn't work investigate the methods `map` and `flatMap` on the `IO` trait.
   val readDateOfBirth: IO[LocalDate] =
-    writeLine("What's your date of birth? [dd-mm-yyyy]")
-      .andThen(readLine)
-      .flatMap(parseDateOfBirth)
+    for {
+      _                 <- writeLine("What's your date of birth? [dd-mm-yyyy]")
+      dateOfBirth       <- readLine
+      parsedDateofBirth <- parseDateOfBirth(dateOfBirth)
+    } yield parsedDateofBirth
 
   // 3. Refactor `readSubscribeToMailingList` and `readUser` using the same techniques as `readDateOfBirth`.
   val readSubscribeToMailingList: IO[Boolean] =
-    writeLine("Would you like to subscribe to our mailing list? [Y/N]")
-      .andThen(readLine)
-      .flatMap(parseLineToBoolean)
+    for {
+      _                      <- writeLine("Would you like to subscribe to our mailing list? [Y/N]")
+      line                   <- readLine
+      subscribeToMailingList <- parseLineToBoolean(line)
+    } yield subscribeToMailingList
 
-  val readUser: IO[User] =
-    readName.flatMap { name =>
-      readDateOfBirth.flatMap(dateOfBirth =>
-        readSubscribeToMailingList.flatMap(subscribed =>
-          clock.now.flatMap { now =>
-            val user = User(name, dateOfBirth, subscribed, now)
-            writeLine(s"User is $user").map(_ => user)
-          }
-        )
-      )
-    }
+  val readUser: IO[User] = {
+    for {
+      name        <- readName
+      dateOfBirth <- readDateOfBirth
+      isSubscribe <- readSubscribeToMailingList
+      now         <- clock.now
+      user = User(name, dateOfBirth, isSubscribe, now)
+      _ <- writeLine(s"User is $user")
+    } yield user
+  }
 
   //////////////////////////////////////////////
   // PART 2: For Comprehension
