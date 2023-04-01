@@ -62,6 +62,18 @@ class IOTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks {
     action.unsafeRun()
     assert(counter == 2) // first and second were executed
   }
+test("flatMap2") {
+    var counter = 0
+
+    val first  = IO(counter += 1)
+    val second = IO(counter *= 2)
+
+    val action = first.flatMap2(_ => second)
+    assert(counter == 0) // nothing happened before unsafeRun
+
+    action.unsafeRun()
+    assert(counter == 2) // first and second were executed
+  }
 
   //////////////////////////////////////////////
   // PART 3: Error handling
@@ -134,7 +146,7 @@ class IOTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks {
   // PART 4: IO clean-up
   //////////////////////////////////////////////
 
-  ignore("attempt success") {
+  test("attempt success") {
     var counter = 0
 
     val action = IO(counter += 1).attempt
@@ -145,7 +157,7 @@ class IOTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks {
     assert(result.isSuccess)
   }
 
-  ignore("attempt failure") {
+  test("attempt failure") {
     var counter = 0
 
     val exception = new Exception("Boom")
