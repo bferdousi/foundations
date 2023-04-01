@@ -28,7 +28,7 @@ trait IO[A] {
   //       Another popular symbol is <* so that `action1 <* action2`
   //       executes `action1` and then `action2` but returns the result of `action1`
   def *>[Other](other: IO[Other]): IO[Other] =
-    ???
+    this.andThen(other)
 
   // Runs the current action (`this`) and update the result with `callback`.
   // For example,
@@ -72,11 +72,7 @@ trait IO[A] {
   // IO(throw new Exception("Boom!")).onError(logError).unsafeRun()
   // prints "Got an error: Boom!" and throws new Exception("Boom!")
   def onError[Other](cleanup: Throwable => IO[Other]): IO[A] =
-    this.attempt.flatMap {
-      case Failure(exception) =>
-        cleanup(exception).andThen(IO.fail(exception))
-      case Success(value) => IO(value)
-    }
+    this.handleErrorWith(e => cleanup(e).andThen(IO.fail(e)))
 
   // Retries this action until either:
   // * It succeeds.
@@ -93,19 +89,11 @@ trait IO[A] {
   // Note: `maxAttempt` must be greater than 0, otherwise the `IO` should fail.
   // Note: `retry` is a no-operation when `maxAttempt` is equal to 1.
   def retry(maxAttempt: Int): IO[A] =
-    IO {
-      require(maxAttempt > 0, "maxAttempt must be greater than 0")
-    }.andThen(this.attempt.flatMap {
-      case Failure(exception) => if (maxAttempt == 1) IO.fail(exception) else retry(maxAttempt - 1)
-      case Success(value)     => IO(value)
-    })
-
-//      Try {
-//        this.unsafeRun()
-//      } match {
-//        case Failure(exception) => if (maxAttempt == 1) throw exception else retry(maxAttempt - 1).unsafeRun()
-//        case Success(value)     => value
-//      }
+    if (maxAttempt <= 0) IO.fail(new IllegalArgumentException("maxAttempt must be greater than 0"))
+    else if (maxAttempt == 1) this
+    else {
+      this.handleErrorWith(e => retry(maxAttempt - 1))
+    }
 
   // Checks if the current IO is a failure or a success.
   // For example,
@@ -125,7 +113,10 @@ trait IO[A] {
   //   logError(e).andThen(emailClient.send(user.email, "Sorry something went wrong"))
   // )
   def handleErrorWith(callback: Throwable => IO[A]): IO[A] =
-    ???
+    this.attempt.flatMap {
+      case Failure(exception) => callback(exception)
+      case Success(value)     => IO(value)
+    }
 
   //////////////////////////////////////////////
   // Concurrent IO
