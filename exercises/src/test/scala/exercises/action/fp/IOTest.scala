@@ -1,5 +1,6 @@
 package exercises.action.fp
 
+import org.scalacheck.Gen
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
@@ -62,7 +63,7 @@ class IOTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks {
     action.unsafeRun()
     assert(counter == 2) // first and second were executed
   }
-test("flatMap2") {
+  test("flatMap2") {
     var counter = 0
 
     val first  = IO(counter += 1)
@@ -86,7 +87,7 @@ test("flatMap2") {
       IO {
         count = count + 1
       }
-     val x  = IO(1).onError(countError).unsafeRun()
+    val x = IO(1).onError(countError).unsafeRun()
     assert(x == 1)
     assert(count == 0)
   }
@@ -94,7 +95,7 @@ test("flatMap2") {
     var count = 0
     def countError(e: Throwable): IO[Unit] =
       IO {
-        count= count+1
+        count = count + 1
       }
 
     assertThrows[Exception](IO(throw new Exception("Boom")).onError(countError).unsafeRun())
@@ -192,6 +193,42 @@ test("flatMap2") {
 
     action.unsafeRun()
     assert(counter == 2) // first and second were executed in the expected order
+  }
+
+  test("on error clean error") {
+    var counter = 0
+    val ex1     = new Exception("Boom")
+    val ex2     = new Exception("Woah")
+    val first   = IO(counter += 1) andThen IO.fail(ex1)
+    val second  = IO(counter += 2) andThen IO.fail(ex2)
+
+    val action = first.onError(_ => second).attempt
+    assert(counter == 0)
+
+    val result = action.unsafeRun()
+    assert(result.isFailure)
+    assert(result == Failure(ex1))
+  }
+
+  test("retry test on maxAttempt more than number of errors") {
+    forAll(Gen.choose(1, 10000), Gen.choose(1, 10000), MinSuccessful(1000)) { (numberOfError, numberOfAttempts) =>
+      var counter = 0
+      val action = IO {
+        if (counter < numberOfError) {
+          counter += 1
+          throw new Exception("Boom")
+        } else "Hello World"
+      }
+
+      val res = action.retry(numberOfAttempts).attempt.unsafeRun()
+
+      if(numberOfError <= numberOfAttempts){
+        assert(res.isSuccess)
+      }
+      else {
+        assert(res.isFailure)
+      }
+    }
   }
 
   //////////////////////////////////////////////
