@@ -1,7 +1,7 @@
 package exercises.action.fp
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 trait IO[A] {
@@ -95,7 +95,6 @@ trait IO[A] {
       this.handleErrorWith(_ => retry(maxAttempt - 1))
     }
 
-
   // Checks if the current IO is a failure or a success.
   // For example,
   // val action: IO[User] = db.getUser(1234)
@@ -133,8 +132,22 @@ trait IO[A] {
 
   // Runs both the current IO and `other` concurrently,
   // then combine their results into a tuple
-  def parZip[Other](other: IO[Other])(ec: ExecutionContext): IO[(A, Other)] =
-    ???
+  def parZip[Other](other: IO[Other])(ec: ExecutionContext): IO[(A, Other)] = {
+    this.zip(other)
+    IO {
+      val future1                    = Future(this.unsafeRun())(ec)
+      val future2                    = Future(other.unsafeRun())(ec)
+      val zipped: Future[(A, Other)] = future1.zip(future2)
+      Await.result(zipped, Duration.Inf)
+    }
+//    implicit val context: ExecutionContext = ec
+//    val a                                  = Future.fromTry(this.attempt.unsafeRun())
+//    val b                                  = Future.fromTry(other.attempt.unsafeRun())
+//    for {
+//      x1 <- a
+//      x2 <- b
+//    } yield IO(x1, x2)
+  }
 
 }
 
@@ -172,7 +185,22 @@ object IO {
   // If no error occurs, it returns the users in the same order:
   // List(User(1111, ...), User(2222, ...), User(3333, ...))
   def sequence[A](actions: List[IO[A]]): IO[List[A]] =
-    ???
+    actions
+      .foldLeft(IO(List.empty[A])) { (prevList: IO[List[A]], a: IO[A]) =>
+        for {
+          list   <- prevList
+          action <- a
+        } yield action :: list
+      }
+      .map(_.reverse)
+//    actions match {
+//      case Nil => IO(List.empty[A])
+//      case head :: next =>
+//        for {
+//          a <- head
+//          l <- sequence(next)
+//        } yield a +: l
+//    }
 
   // `traverse` is a shortcut for `map` followed by `sequence`, similar to how
   // `flatMap`  is a shortcut for `map` followed by `flatten`
@@ -197,7 +225,6 @@ object IO {
   // Note: You may want to use `parZip` to implement `parSequence`.
   def parSequence[A](actions: List[IO[A]])(ec: ExecutionContext): IO[List[A]] =
     ???
-
   // `parTraverse` is a shortcut for `map` followed by `parSequence`, similar to how
   // `flatMap`     is a shortcut for `map` followed by `flatten`
   // For example,

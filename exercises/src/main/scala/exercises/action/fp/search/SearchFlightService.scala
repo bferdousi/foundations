@@ -1,9 +1,8 @@
 package exercises.action.fp.search
 
-import java.time.LocalDate
 import exercises.action.fp.IO
 
-import scala.annotation.tailrec
+import java.time.LocalDate
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
@@ -23,10 +22,21 @@ object SearchFlightService {
   // (see `SearchResult` companion object).
   // Note: A example based test is defined in `SearchFlightServiceTest`.
   //       You can also defined tests for `SearchResult` in `SearchResultTest`
-  def fromTwoClients(client1: SearchFlightClient, client2: SearchFlightClient): SearchFlightService =
+  def fromTwoClients(client1: SearchFlightClient, client2: SearchFlightClient)(
+    ec: ExecutionContext
+  ): SearchFlightService =
     new SearchFlightService {
-      def search(from: Airport, to: Airport, date: LocalDate): IO[SearchResult] =
-        ???
+      def search(from: Airport, to: Airport, date: LocalDate): IO[SearchResult] = {
+        def searchClient(client: SearchFlightClient): IO[List[Flight]] =
+          client.search(from, to, date).handleErrorWith { err =>
+            IO.debug(s"OOps an error occurred: $err")
+            IO(List.empty[Flight])
+          }
+
+        searchClient(client1).parZip(searchClient(client2))(ec).map { case (value, value1) =>
+          SearchResult(value ++ value1)
+        }
+      }
 
     }
 
@@ -46,8 +56,18 @@ object SearchFlightService {
   // Note: We can assume `clients` to contain less than 100 elements.
   def fromClients(clients: List[SearchFlightClient]): SearchFlightService =
     new SearchFlightService {
-      def search(from: Airport, to: Airport, date: LocalDate): IO[SearchResult] =
-        ???
+      def search(from: Airport, to: Airport, date: LocalDate): IO[SearchResult] = {
+        def searchByClient(client: SearchFlightClient): IO[List[Flight]] =
+          client.search(from, to, date).handleErrorWith(_ => IO(List.empty[Flight]))
+//        clients
+//          .map(searchByClient)
+//          .sequence
+//          .map(f => SearchResult(f.flatten))
+        clients
+          .traverse(searchByClient)
+          .map(f => SearchResult(f.flatten))
+      }
+
     }
 
   // 5. Refactor `fromClients` using `sequence` or `traverse` from the `IO` companion object.
